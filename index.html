@@ -1,0 +1,422 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CekLink — Cek link sebelum diklik</title>
+<meta name="description" content="CekLink membantu mahasiswa memeriksa ciri-ciri phishing pada sebuah link sebelum diklik.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --paper:#F4F7F2; --card:#FFFFFF; --ink:#13241C; --muted:#5B6B62; --line:#D8E2DA;
+    --forest:#1F5A3F; --forest-ink:#FFFFFF;
+    --safe:#2E7D4F; --safe-bg:#E4F2E9;
+    --warn:#A86F00; --warn-bg:#FBF0D6;
+    --danger:#B8352A; --danger-bg:#FBE4E1;
+    --sans:"Plus Jakarta Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+    --mono:"JetBrains Mono", ui-monospace, "SFMono-Regular", Consolas, monospace;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0}
+  body{background:var(--paper);color:var(--ink);font-family:var(--sans);font-size:16px;line-height:1.55}
+  .wrap{max-width:720px;margin:0 auto;padding:40px 20px 64px}
+  header{display:flex;align-items:baseline;justify-content:space-between;gap:16px;margin-bottom:28px}
+  .brand{font-weight:800;font-size:1.5rem;letter-spacing:-.02em;margin:0}
+  .brand span{color:var(--forest)}
+  .tag{color:var(--muted);font-size:.9rem;margin:0}
+  h1{font-size:clamp(1.6rem,4.5vw,2.25rem);line-height:1.15;letter-spacing:-.025em;margin:0 0 10px;font-weight:800}
+  .lead{color:var(--muted);margin:0 0 22px;max-width:60ch}
+
+  form{display:flex;gap:10px;flex-wrap:wrap}
+  .field{flex:1 1 320px;position:relative}
+  input[type=text]{width:100%;font:500 1rem var(--mono);padding:15px 16px;border:2px solid var(--line);border-radius:12px;background:var(--card);color:var(--ink)}
+  input[type=text]:focus{outline:none;border-color:var(--forest)}
+  button{font:700 1rem var(--sans);border:0;border-radius:12px;padding:15px 22px;cursor:pointer}
+  .primary{background:var(--forest);color:var(--forest-ink)}
+  .primary:hover{background:#174631}
+  button:focus-visible,a:focus-visible,.chip:focus-visible{outline:3px solid #7FB89A;outline-offset:2px}
+  .examples{margin:14px 0 0;display:flex;flex-wrap:wrap;gap:8px;align-items:center;font-size:.88rem;color:var(--muted)}
+  .chip{font:400 .82rem var(--mono);background:transparent;border:1px dashed var(--line);color:var(--ink);padding:6px 10px;border-radius:8px}
+  .chip:hover{border-color:var(--forest)}
+  .error{color:var(--danger);font-size:.92rem;margin:10px 0 0}
+  .error:empty{display:none}
+
+  /* Result */
+  .result{margin-top:28px;background:var(--card);border:1px solid var(--line);border-radius:18px;overflow:hidden}
+  .verdict{padding:22px 22px 18px;display:grid;grid-template-columns:1fr auto;gap:6px 16px;align-items:center}
+  .verdict h2{margin:0;font-size:1.6rem;letter-spacing:-.02em}
+  .verdict p{margin:0;color:var(--muted);grid-column:1/-1;max-width:62ch}
+  .score{font:600 .95rem var(--mono);padding:6px 10px;border-radius:8px;white-space:nowrap}
+  .lv-aman .verdict{background:var(--safe-bg)} .lv-aman h2{color:var(--safe)} .lv-aman .score{background:#fff;color:var(--safe)}
+  .lv-waspada .verdict{background:var(--warn-bg)} .lv-waspada h2{color:var(--warn)} .lv-waspada .score{background:#fff;color:var(--warn)}
+  .lv-berbahaya .verdict{background:var(--danger-bg)} .lv-berbahaya h2{color:var(--danger)} .lv-berbahaya .score{background:#fff;color:var(--danger)}
+  .meter{grid-column:1/-1;height:8px;background:rgba(0,0,0,.08);border-radius:99px;overflow:hidden;margin-top:8px}
+  .meter i{display:block;height:100%;border-radius:99px;transition:width .5s ease}
+  .lv-aman .meter i{background:var(--safe)} .lv-waspada .meter i{background:var(--warn)} .lv-berbahaya .meter i{background:var(--danger)}
+
+  .section{padding:18px 22px;border-top:1px solid var(--line)}
+  .section h3{font-size:1rem;margin:0 0 12px}
+  .anatomy{font:500 .95rem/1.9 var(--mono);word-break:break-all;background:var(--paper);border-radius:10px;padding:12px 14px}
+  .anatomy span{border-radius:4px;padding:1px 2px}
+  .anatomy .bad{background:var(--danger-bg);color:var(--danger);text-decoration:underline wavy var(--danger);text-underline-offset:4px}
+  .anatomy .dom{font-weight:600}
+  .legend{font-size:.85rem;color:var(--muted);margin:10px 0 0}
+  .reasons{list-style:none;margin:0;padding:0;display:grid;gap:12px}
+  .reasons li{display:grid;grid-template-columns:auto 1fr;gap:4px 12px}
+  .reasons .w{font:600 .8rem var(--mono);color:var(--danger);padding-top:3px;min-width:3ch;text-align:right}
+  .reasons .ok{color:var(--safe)}
+  .reasons strong{display:block}
+  .reasons p{margin:0;color:var(--muted);font-size:.93rem}
+  .actions{display:flex;flex-wrap:wrap;gap:10px}
+  .ghost{background:transparent;border:2px solid var(--line);color:var(--ink);padding:11px 16px;font-size:.93rem}
+  .ghost:hover{border-color:var(--forest)}
+  .note{font-size:.85rem;color:var(--muted);margin:12px 0 0}
+
+  /* History */
+  .history{margin-top:40px}
+  .history-head{display:flex;justify-content:space-between;align-items:baseline;gap:12px}
+  .history h2{font-size:1.15rem;margin:0}
+  .link-btn{background:none;border:0;padding:4px;color:var(--muted);font-size:.88rem;text-decoration:underline;cursor:pointer}
+  .hist{list-style:none;margin:12px 0 0;padding:0;border-top:1px solid var(--line)}
+  .hist li{border-bottom:1px solid var(--line)}
+  .hist button{width:100%;display:grid;grid-template-columns:10px 1fr auto;gap:12px;align-items:center;background:none;border-radius:0;padding:12px 4px;text-align:left;font-weight:400}
+  .hist button:hover{background:rgba(31,90,63,.05)}
+  .dot{width:10px;height:10px;border-radius:50%}
+  .d-aman{background:var(--safe)} .d-waspada{background:var(--warn)} .d-berbahaya{background:var(--danger)}
+  .hist .u{font:400 .88rem var(--mono);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .hist .m{font-size:.8rem;color:var(--muted);white-space:nowrap}
+  .empty{color:var(--muted);font-size:.93rem;margin:12px 0 0}
+
+  footer{margin-top:48px;font-size:.85rem;color:var(--muted);border-top:1px solid var(--line);padding-top:16px}
+  .toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%) translateY(20px);background:var(--ink);color:#fff;padding:10px 16px;border-radius:10px;font-size:.92rem;opacity:0;pointer-events:none;transition:.25s}
+  .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+  [hidden]{display:none!important}
+  @media (prefers-reduced-motion:reduce){*{transition:none!important}}
+  @media (max-width:520px){.wrap{padding-top:24px} .verdict h2{font-size:1.35rem} button.primary{width:100%}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <p class="brand">Cek<span>Link</span></p>
+    <p class="tag">Cek dulu, klik kemudian</p>
+  </header>
+
+  <main>
+    <h1>Dapat link dari grup atau chat? Cek dulu sebelum dibuka.</h1>
+    <p class="lead">Tempel link yang kamu terima. CekLink membaca ciri-ciri umum phishing pada alamatnya dan menjelaskan hasilnya dengan bahasa sederhana. Link tidak dibuka dan tidak dikirim ke mana pun.</p>
+
+    <form id="form" autocomplete="off">
+      <div class="field">
+        <label for="url" class="sr" hidden>Link yang ingin dicek</label>
+        <input id="url" type="text" inputmode="url" placeholder="Tempel link di sini, misalnya bit.ly/…" aria-label="Link yang ingin dicek">
+      </div>
+      <button class="primary" type="submit">Cek link</button>
+    </form>
+    <p class="error" id="error" role="alert"></p>
+    <div class="examples">
+      <span>Coba contoh:</span>
+      <button class="chip" type="button" data-ex="https://www.nurulfikri.ac.id">nurulfikri.ac.id</button>
+      <button class="chip" type="button" data-ex="http://nurulf1kri-ac-id.login-verifikasi.xyz/akun/masuk">login palsu kampus</button>
+      <button class="chip" type="button" data-ex="bit.ly/beasiswa-2026-gratis">link beasiswa</button>
+      <button class="chip" type="button" data-ex="https://undangan-pernikahan.site/undangan.apk">undangan .apk</button>
+    </div>
+
+    <section id="result" class="result" hidden aria-live="polite"></section>
+
+    <section class="history" aria-labelledby="hist-title">
+      <div class="history-head">
+        <h2 id="hist-title">Riwayat pengecekan</h2>
+        <button class="link-btn" id="clear" type="button" hidden>Hapus riwayat</button>
+      </div>
+      <ul class="hist" id="hist"></ul>
+      <p class="empty" id="empty">Belum ada link yang dicek. Link yang kamu cek akan tersimpan di perangkat ini.</p>
+    </section>
+  </main>
+
+  <footer>
+    CekLink memeriksa pola pada alamat link, bukan isi halamannya. Hasil "Aman" berarti tidak ditemukan ciri umum phishing, bukan jaminan link pasti aman. Jika ragu, tanyakan langsung ke pengirim lewat jalur lain.
+  </footer>
+</div>
+<div class="toast" id="toast" role="status"></div>
+
+<script>
+(function(){
+  // ---------- Data ----------
+  const TWO_LEVEL = ["co.id","ac.id","go.id","or.id","my.id","web.id","sch.id","net.id","biz.id","mil.id","ponpes.id","desa.id","co.uk","ac.uk","com.au","co.jp","com.sg","com.my"];
+  const SHORTENERS = ["bit.ly","s.id","tinyurl.com","t.co","cutt.ly","shorturl.at","rb.gy","is.gd","ow.ly","t.ly","tiny.cc","rebrand.ly","lnkd.in","v.gd","linktr.ee"];
+  const RISKY_TLD = ["xyz","top","tk","ml","ga","cf","gq","click","link","online","site","live","icu","buzz","rest","monster","shop","store","win","loan","work","support","cam","cyou","sbs"];
+  const KEYWORDS = ["login","signin","masuk","verify","verifikasi","update","secure","akun","account","hadiah","gratis","bonus","klaim","claim","undian","blokir","konfirmasi","wallet","password","sandi","reward","promo","cair"];
+  const BRANDS = [
+    {name:"Google", keys:["google","gmail"], official:["google.com","google.co.id","gmail.com","youtube.com"]},
+    {name:"BCA", keys:["bca","klikbca"], official:["bca.co.id","klikbca.com"]},
+    {name:"Bank Mandiri", keys:["mandiri","livin"], official:["bankmandiri.co.id"]},
+    {name:"BRI", keys:["bri","brimo"], official:["bri.co.id"]},
+    {name:"BNI", keys:["bni"], official:["bni.co.id"]},
+    {name:"DANA", keys:["dana"], official:["dana.id"]},
+    {name:"OVO", keys:["ovo"], official:["ovo.id"]},
+    {name:"GoPay / Gojek", keys:["gopay","gojek"], official:["gojek.com","gopay.co.id"]},
+    {name:"Shopee", keys:["shopee"], official:["shopee.co.id","shopee.com"]},
+    {name:"Tokopedia", keys:["tokopedia"], official:["tokopedia.com"]},
+    {name:"WhatsApp", keys:["whatsapp"], official:["whatsapp.com","wa.me"]},
+    {name:"Instagram", keys:["instagram"], official:["instagram.com"]},
+    {name:"Facebook", keys:["facebook"], official:["facebook.com","fb.com"]},
+    {name:"Microsoft", keys:["microsoft","office365","outlook","onedrive"], official:["microsoft.com","office.com","live.com","outlook.com","microsoftonline.com","sharepoint.com"]},
+    {name:"Apple", keys:["apple","icloud"], official:["apple.com","icloud.com"]},
+    {name:"PayPal", keys:["paypal"], official:["paypal.com"]},
+    {name:"JNE", keys:["jne"], official:["jne.co.id"]},
+    {name:"DJP (Pajak)", keys:["pajak","djponline"], official:["pajak.go.id"]},
+    {name:"BPJS", keys:["bpjs"], official:["bpjs-kesehatan.go.id","bpjsketenagakerjaan.go.id"]},
+    {name:"Kemendikbud", keys:["kemdikbud","kemendikbud"], official:["kemdikbud.go.id"]},
+    {name:"STT Terpadu Nurul Fikri", keys:["nurulfikri"], official:["nurulfikri.ac.id"]},
+    {name:"Telkomsel", keys:["telkomsel"], official:["telkomsel.com"]}
+  ];
+  const OFFICIAL = new Set(BRANDS.flatMap(b=>b.official));
+
+  // ---------- Helpers ----------
+  const $ = s => document.querySelector(s);
+  const esc = s => String(s).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+  function registrable(host){
+    const p = host.split(".");
+    if (p.length < 2) return {domain:host, name:host, sub:""};
+    const last2 = p.slice(-2).join(".");
+    const n = TWO_LEVEL.includes(last2) && p.length >= 3 ? 3 : 2;
+    const domain = p.slice(-n).join(".");
+    return {domain, name:p[p.length-n], sub:p.slice(0,-n).join(".")};
+  }
+  function normalize(s){
+    return s.toLowerCase().replace(/rn/g,"m").replace(/vv/g,"w")
+      .replace(/0/g,"o").replace(/[1!|]/g,"l").replace(/3/g,"e").replace(/4/g,"a").replace(/5/g,"s").replace(/7/g,"t")
+      .replace(/i/g,"l").replace(/-/g,"");
+  }
+  function lev(a,b){
+    const m=a.length,n=b.length; if(!m) return n; if(!n) return m;
+    let prev=Array.from({length:n+1},(_,i)=>i);
+    for(let i=1;i<=m;i++){ const cur=[i];
+      for(let j=1;j<=n;j++) cur[j]=Math.min(prev[j]+1,cur[j-1]+1,prev[j-1]+(a[i-1]===b[j-1]?0:1));
+      prev=cur; }
+    return prev[n];
+  }
+
+  // ---------- Analysis ----------
+  function analyze(raw){
+    let input = raw.trim();
+    if (!input) throw new Error("Tempel link dulu, lalu tekan Cek link.");
+    const lower = input.toLowerCase();
+    if (/^(javascript|data|vbscript):/.test(lower)){
+      return {input, level:"berbahaya", score:100, parts:null,
+        reasons:[{w:100, part:"scheme", t:"Bukan alamat website", d:"Link ini menjalankan kode atau memuat data langsung, bukan membuka halaman web. Jangan dibuka."}]};
+    }
+    const hasScheme = /^[a-z][a-z0-9+.-]*:\/\//i.test(input);
+    let u;
+    try { u = new URL(hasScheme ? input : "http://" + input); }
+    catch(e){ throw new Error("Link tidak bisa dibaca. Pastikan yang ditempel adalah alamat lengkap, misalnya contoh.com/halaman."); }
+    if (!/^https?:$/.test(u.protocol)) throw new Error("CekLink hanya memeriksa link website (http atau https).");
+    const host = u.hostname.toLowerCase().replace(/\.$/,"");
+    if (!host.includes(".") && !/^\d+$/.test(host)) throw new Error("Alamat ini tidak punya domain yang lengkap, misalnya .com atau .ac.id.");
+
+    const reasons = [];
+    const bad = {scheme:false, sub:false, domain:false, path:false};
+    const add = (w, part, t, d) => { reasons.push({w, part, t, d}); if (part) bad[part] = true; };
+    const isIP = /^\d{1,3}(\.\d{1,3}){3}$/.test(host) || host.startsWith("[");
+    const reg = isIP ? {domain:host, name:host, sub:""} : registrable(host);
+    const tld = host.split(".").pop();
+    const isOfficial = OFFICIAL.has(reg.domain);
+    const pathq = (u.pathname + u.search + u.hash);
+    const pathLower = decodeURIComponent(pathq).toLowerCase();
+
+    if (hasScheme && u.protocol === "http:")
+      add(15, "scheme", "Tidak memakai HTTPS", "Data yang kamu ketik di halaman ini tidak terenkripsi. Situs resmi kampus, bank, dan dompet digital selalu memakai https.");
+    if (isIP)
+      add(30, "domain", "Memakai alamat IP, bukan nama domain", "Situs resmi hampir selalu memakai nama domain. Alamat berupa angka sering dipakai untuk menyembunyikan identitas situs.");
+    if (u.username || /@/.test(input.split("?")[0].replace(/^[a-z]+:\/\//i,"").split("/")[0]))
+      add(30, "domain", "Ada tanda @ di alamat", "Semua yang ditulis sebelum @ diabaikan browser. Trik ini dipakai supaya link terlihat seperti situs lain.");
+    if (host.includes("xn--"))
+      add(25, "domain", "Memakai huruf yang menyerupai huruf latin", "Domain ini memakai karakter khusus (punycode) yang bisa terlihat sama persis dengan nama situs terkenal.");
+    if (SHORTENERS.includes(reg.domain) || SHORTENERS.includes(host))
+      add(15, "domain", "Link diperpendek", "Tujuan asli link tersembunyi. Pemendek link sering dipakai secara wajar, tapi juga sering dipakai untuk menyamarkan situs palsu.");
+    if (!isIP && RISKY_TLD.includes(tld))
+      add(15, "domain", `Akhiran domain .${tld} sering dipakai situs palsu`, "Akhiran ini murah dan mudah didaftarkan, sehingga banyak dipakai untuk situs phishing. Tidak semua situs dengan akhiran ini berbahaya.");
+
+    // Brand impersonation
+    if (!isIP && !isOfficial){
+      const tokens = (host + "." + (u.username || "")).split(/[.@:-]/).filter(Boolean);
+      const match = (t,k) => k.length <= 4 ? (t === k || normalize(t) === normalize(k)) : normalize(t).includes(normalize(k));
+      const nameNorm = normalize(reg.name);
+      let flagged = false;
+      for (const b of BRANDS){
+        const hit = b.keys.some(k => tokens.some(t => match(t,k)));
+        if (hit){
+          const inSub = b.keys.some(k => reg.sub.split(/[.-]/).some(t => match(t,k)));
+          const exact = b.keys.some(k => tokens.some(t => k.length <= 4 ? t === k : t.includes(k)));
+          if (exact) add(35, inSub ? "sub" : "domain", `Memakai nama ${b.name}, tapi bukan domain resminya`,
+            `Domain aslinya adalah ${reg.domain}. Situs resmi ${b.name} ada di ${b.official.join(" atau ")}.`);
+          else add(40, inSub ? "sub" : "domain", `Menyamar sebagai ${b.name} dengan huruf yang ditukar`,
+            `Ada huruf yang diganti angka atau huruf mirip (misalnya i jadi 1, o jadi 0). Domain aslinya ${reg.domain}, sedangkan situs resmi ${b.name} ada di ${b.official.join(" atau ")}.`);
+          flagged = true; break;
+        }
+      }
+      if (!flagged && reg.name.length >= 4){
+        for (const b of BRANDS){
+          for (const off of b.official){
+            const offName = registrable(off).name;
+            if (offName.length < 5) continue;
+            const d = lev(nameNorm, normalize(offName));
+            if (reg.name !== offName && (d === 0 || (d <= 2 && Math.abs(nameNorm.length - offName.length) <= 2))){
+              add(40, "domain", `Nama domain mirip ${b.name}`,
+                `"${reg.domain}" sangat mirip dengan ${off}. Situs palsu sering mengganti atau menambah satu-dua huruf supaya tidak ketahuan.`);
+              flagged = true; break;
+            }
+          }
+          if (flagged) break;
+        }
+      }
+    }
+
+    const subCount = reg.sub ? reg.sub.split(".").length : 0;
+    if (subCount >= 3)
+      add(10, "sub", "Terlalu banyak bagian sebelum domain", "Nama panjang di depan domain sering dipakai supaya bagian awal link terlihat meyakinkan, padahal domain aslinya berbeda.");
+    if ((reg.name.match(/-/g) || []).length >= 2)
+      add(10, "domain", "Banyak tanda hubung di nama domain", "Situs palsu sering merangkai beberapa kata dengan tanda hubung, misalnya nama-kampus-login-resmi.");
+    if (u.port && !["80","443"].includes(u.port))
+      add(10, "domain", `Memakai port tidak biasa (:${u.port})`, "Situs umum tidak perlu nomor port di alamatnya.");
+    if (/\.apk(\?|#|$)/.test(pathLower))
+      add(50, "path", "Link mengunduh aplikasi Android (.apk)", "Modus \"undangan\", \"surat tilang\", atau \"resi paket\" dalam bentuk .apk dipakai untuk mencuri data dan OTP dari HP. Jangan diunduh.");
+    const kw = KEYWORDS.filter(k => (host + " " + pathLower).includes(k));
+    if (kw.length)
+      add(Math.min(20, kw.length * 10), (host.includes(kw[0]) && !pathLower.includes(kw[0])) ? "sub" : "path",
+        "Memakai kata pancingan", `Ditemukan kata: ${kw.slice(0,4).join(", ")}. Kata seperti ini dipakai untuk membuat kamu buru-buru login atau mengisi data.`);
+    if (input.length > 120)
+      add(10, null, "Link sangat panjang", "Link yang terlalu panjang menyulitkan kamu membaca domain aslinya.");
+
+    let score = Math.min(100, reasons.reduce((s,r)=>s+r.w,0));
+    if (isOfficial && score > 0) score = Math.max(0, score - 20);
+    const level = score >= 60 ? "berbahaya" : score >= 25 ? "waspada" : "aman";
+    return {input, level, score, isOfficial, parts:{
+      scheme: hasScheme ? u.protocol + "//" : "", sub: reg.sub ? reg.sub + "." : "",
+      domain: reg.domain + (u.port ? ":" + u.port : ""), path: pathq === "/" ? "" : pathq
+    }, bad, reasons: reasons.sort((a,b)=>b.w-a.w), domain: reg.domain};
+  }
+
+  // ---------- Storage ----------
+  const KEY = "ceklink:history";
+  function loadHist(){ try { return JSON.parse(localStorage.getItem(KEY)) || []; } catch(e){ return []; } }
+  function saveHist(h){ try { localStorage.setItem(KEY, JSON.stringify(h.slice(0,30))); } catch(e){} }
+  let history = loadHist();
+
+  // ---------- Render ----------
+  const LABEL = {aman:"Aman", waspada:"Waspada", berbahaya:"Berbahaya"};
+  const SUMMARY = {
+    aman:"Tidak ditemukan ciri umum phishing pada alamat link ini. Tetap periksa apakah pengirimnya memang kamu kenal.",
+    waspada:"Ada beberapa tanda yang perlu diperhatikan. Pastikan ke pengirim lewat jalur lain sebelum membuka atau mengisi data.",
+    berbahaya:"Link ini punya banyak ciri phishing. Jangan dibuka, jangan login, dan jangan mengunduh apa pun darinya."
+  };
+  let current = null;
+
+  function render(r){
+    current = r;
+    const el = $("#result");
+    el.className = "result lv-" + r.level;
+    const p = r.parts, b = r.bad || {};
+    const anatomy = p ? `
+      <div class="section">
+        <h3>Bagian-bagian link</h3>
+        <div class="anatomy">${p.scheme ? `<span class="${b.scheme?"bad":""}">${esc(p.scheme)}</span>` : ""}${p.sub ? `<span class="${b.sub?"bad":""}">${esc(p.sub)}</span>` : ""}<span class="dom ${b.domain?"bad":""}">${esc(p.domain)}</span>${p.path ? `<span class="${b.path?"bad":""}">${esc(p.path)}</span>` : ""}</div>
+        <p class="legend">Bagian tebal adalah domain asli, yaitu pemilik sebenarnya dari link ini${r.domain ? `: <strong>${esc(r.domain)}</strong>` : ""}. Bagian bergaris merah adalah yang mencurigakan.</p>
+      </div>` : "";
+    const reasons = r.reasons.length ? r.reasons.map(x => `
+        <li><span class="w">+${x.w}</span><div><strong>${esc(x.t)}</strong><p>${esc(x.d)}</p></div></li>`).join("")
+      : `<li><span class="w ok">0</span><div><strong>Tidak ditemukan tanda bahaya</strong><p>${r.isOfficial ? "Domain ini tercatat sebagai domain resmi." : "Alamat link tidak menunjukkan pola phishing yang umum."}</p></div></li>`;
+    const saved = history.find(h => h.url === r.input);
+    el.innerHTML = `
+      <div class="verdict">
+        <h2>${LABEL[r.level]}</h2>
+        <span class="score">Skor risiko ${r.score}/100</span>
+        <div class="meter" aria-hidden="true"><i style="width:0"></i></div>
+        <p>${SUMMARY[r.level]}</p>
+      </div>
+      ${anatomy}
+      <div class="section">
+        <h3>Kenapa hasilnya begini</h3>
+        <ul class="reasons">${reasons}</ul>
+      </div>
+      <div class="section">
+        <div class="actions">
+          <button class="ghost" id="report" type="button">${saved && saved.reported ? "Salin laporan lagi" : "Salin laporan"}</button>
+          ${r.level !== "berbahaya" && r.parts ? `<button class="ghost" id="open" type="button">Buka link</button>` : ""}
+        </div>
+        <p class="note">"Salin laporan" menyalin ringkasan hasil ini supaya bisa kamu teruskan ke admin grup, dosen, atau bagian IT kampus.</p>
+      </div>`;
+    el.hidden = false;
+    requestAnimationFrame(()=>{ const m = el.querySelector(".meter i"); if (m) m.style.width = r.score + "%"; });
+    $("#report").onclick = () => report(r);
+    const open = $("#open");
+    if (open) open.onclick = () => {
+      if (r.level === "waspada" && !confirm("Link ini punya tanda mencurigakan. Tetap buka di tab baru?")) return;
+      const href = /^[a-z]+:\/\//i.test(r.input) ? r.input : "https://" + r.input;
+      window.open(href, "_blank", "noopener,noreferrer");
+    };
+  }
+
+  function report(r){
+    const text = `Laporan link mencurigakan (CekLink)\nLink: ${r.input}\nHasil: ${LABEL[r.level]} (skor ${r.score}/100)\nAlasan:\n` +
+      (r.reasons.length ? r.reasons.map(x=>"- " + x.t).join("\n") : "- Tidak ditemukan tanda bahaya") +
+      `\nMohon jangan dibuka sebelum dipastikan ke pengirim.`;
+    const done = () => {
+      const h = history.find(x => x.url === r.input); if (h){ h.reported = true; saveHist(history); renderHist(); }
+      toast("Laporan tersalin. Tempel di chat untuk meneruskannya.");
+      $("#report").textContent = "Salin laporan lagi";
+    };
+    if (navigator.clipboard && window.isSecureContext) navigator.clipboard.writeText(text).then(done, () => fallbackCopy(text, done));
+    else fallbackCopy(text, done);
+  }
+  function fallbackCopy(text, done){
+    const ta = document.createElement("textarea"); ta.value = text; document.body.appendChild(ta); ta.select();
+    try { document.execCommand("copy"); done(); } catch(e){ toast("Gagal menyalin. Salin manual dari hasil di atas."); }
+    ta.remove();
+  }
+
+  function renderHist(){
+    const ul = $("#hist");
+    ul.innerHTML = history.map((h,i) => `
+      <li><button type="button" data-i="${i}">
+        <span class="dot d-${h.level}" aria-label="${LABEL[h.level]}"></span>
+        <span class="u">${esc(h.url)}</span>
+        <span class="m">${LABEL[h.level]} · ${h.score}${h.reported ? " · dilaporkan" : ""}</span>
+      </button></li>`).join("");
+    $("#empty").hidden = history.length > 0;
+    $("#clear").hidden = history.length === 0;
+    ul.querySelectorAll("button").forEach(b => b.onclick = () => { $("#url").value = history[+b.dataset.i].url; check(); });
+  }
+
+  let tId;
+  function toast(msg){ const t = $("#toast"); t.textContent = msg; t.classList.add("show"); clearTimeout(tId); tId = setTimeout(()=>t.classList.remove("show"), 2600); }
+
+  function check(){
+    $("#error").textContent = "";
+    try {
+      const r = analyze($("#url").value);
+      const prev = history.find(h => h.url === r.input);
+      history = [{url:r.input, level:r.level, score:r.score, time:Date.now(), reported: prev ? prev.reported : false},
+                 ...history.filter(h => h.url !== r.input)];
+      saveHist(history); renderHist(); render(r);
+      $("#result").scrollIntoView({behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth", block:"start"});
+    } catch(e){
+      $("#error").textContent = e.message; $("#result").hidden = true;
+    }
+  }
+
+  $("#form").addEventListener("submit", e => { e.preventDefault(); check(); });
+  document.querySelectorAll("[data-ex]").forEach(b => b.onclick = () => { $("#url").value = b.dataset.ex; check(); });
+  $("#clear").onclick = () => { if (confirm("Hapus semua riwayat pengecekan di perangkat ini?")){ history = []; saveHist(history); renderHist(); } };
+
+  renderHist();
+  // Supports sharing: ceklink.vercel.app/?url=...
+  const shared = new URLSearchParams(location.search).get("url");
+  if (shared){ $("#url").value = shared; check(); }
+})();
+</script>
+</body>
+</html>
